@@ -124,4 +124,3 @@ The application will provide users with an intuitive interface where they can se
 **Current Status**: Early development phase, focusing on model training in Google Colab notebook.
 
 ---
-```
