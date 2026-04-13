@@ -1,5 +1,3 @@
-# README.md for CAmarket Project
-
 # California Median Housing Price Predictor (CAmarket)
 
 ---
