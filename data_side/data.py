@@ -263,3 +263,21 @@ HeatMap(heat_data, radius=8, blur=10, max_zoom=1).add_to(ca_map)
 ca_map.save("eda_ca_heatmap.html")
 ca_map
      
+# Top most expensive MSAs (by Zillow median price)
+top_msas = (
+    df_merged.groupby("msa_name")["zillow_median_price"]
+    .median()
+    .sort_values(ascending=False)
+    .head(10)
+)
+
+plt.figure(figsize=(12, 6))
+sns.barplot(x=top_msas.values, y=top_msas.index, palette="Reds_r")
+plt.title("Top 10 Most Expensive MSAs in California (Zillow)")
+plt.xlabel("Median House Price ($)")
+plt.ylabel("MSA")
+plt.tight_layout()
+plt.savefig("eda_top_msas.png", dpi=150, bbox_inches="tight")
+plt.show()
+print("Saved: eda_top_msas.png")
+### new stuff 
