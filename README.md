@@ -124,3 +124,15 @@ The application will provide users with an intuitive interface where they can se
 **Current Status**: Early development phase, focusing on model training in Google Colab notebook.
 
 ---
+
+## Colab Frontend Run (No GitHub Hosting)
+
+Use [frontend_colab.ipynb](/Users/jeffery/Developer/School/CAmarket/frontend_colab.ipynb) to run the Streamlit frontend directly from a Colab runtime.
+
+High-level flow:
+- Install dependencies in Colab.
+- Upload `main.py` into `/content` (if not already present).
+- Start Streamlit on port `8501`.
+- Open an ngrok tunnel to get a public app URL while the Colab session is active.
+
+---
