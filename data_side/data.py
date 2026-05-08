@@ -2,7 +2,11 @@
 import pandas as pd
 import numpy as np
 from sklearn.datasets import fetch_california_housing
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.linear_model import Ridge
+from sklearn.preprocessing import StandardScaler
 import os
+ 
 
 # Creating a directory structure
 os.makedirs("data/raw", exist_ok=True)
@@ -59,8 +63,6 @@ print(" Zillow Dataset ")
 print(df_zillow_latest.shape)
 print(df_zillow_latest.isnull().sum())
 print(df_zillow_latest.head(10))
-
-import pandas as pd
 
 msa_centroids = pd.DataFrame({
     "RegionName": [
@@ -280,4 +282,116 @@ plt.tight_layout()
 plt.savefig("eda_top_msas.png", dpi=150, bbox_inches="tight")
 plt.show()
 print("Saved: eda_top_msas.png")
-### new stuff 
+
+#### WEIGHTS AS THE PROFESSOR ASKED ####
+# Load data
+df_merged = pd.read_csv("data/processed/merged_housing.csv")
+ 
+# Set default plot style (matching data.py)
+sns.set_theme(style="whitegrid")
+plt.rcParams["figure.figsize"] = (10, 6)
+ 
+TARGET = "zillow_median_price"
+ 
+ALL_FEATURES = ["MedInc", "HouseAge", "AveRooms", "AveBedrms",
+                "Population", "AveOccup", "Latitude", "Longitude"]
+ 
+GEO_EXCLUDED = ["MedInc", "HouseAge", "AveRooms", "AveBedrms",
+                "Population", "AveOccup"]
+ 
+ 
+def get_importances(X, y):
+    """Return RF importance and normalized Ridge absolute coefficients."""
+    # Random Forest
+    rf = RandomForestRegressor(n_estimators=200, random_state=42, n_jobs=-1)
+    rf.fit(X, y)
+    rf_imp = pd.Series(rf.feature_importances_, index=X.columns)
+ 
+    # Ridge (standardized so coefficients are comparable across features)
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(X)
+    ridge = Ridge(alpha=1.0)
+    ridge.fit(X_scaled, y)
+    ridge_imp = pd.Series(np.abs(ridge.coef_), index=X.columns)
+    ridge_imp = ridge_imp / ridge_imp.sum()   # normalize to sum = 1
+ 
+    return rf_imp, ridge_imp
+ 
+ 
+def plot_importances(rf_imp, ridge_imp, title_suffix, filename):
+    fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+ 
+    # --- Random Forest ---
+    rf_sorted = rf_imp.sort_values(ascending=True)
+    colors_rf = ["steelblue" if f not in ("Latitude", "Longitude") else "coral"
+                 for f in rf_sorted.index]
+    axes[0].barh(rf_sorted.index, rf_sorted.values * 100, color=colors_rf,
+                 edgecolor="white")
+    axes[0].set_title(f"Random Forest feature importance\n{title_suffix}")
+    axes[0].set_xlabel("Importance (%)")
+    axes[0].set_ylabel("Feature")
+    for i, v in enumerate(rf_sorted.values * 100):
+        axes[0].text(v + 0.3, i, f"{v:.1f}%", va="center", fontsize=9)
+ 
+    # --- Ridge ---
+    ridge_sorted = ridge_imp.sort_values(ascending=True)
+    colors_ridge = ["steelblue" if f not in ("Latitude", "Longitude") else "coral"
+                    for f in ridge_sorted.index]
+    axes[1].barh(ridge_sorted.index, ridge_sorted.values * 100, color=colors_ridge,
+                 edgecolor="white")
+    axes[1].set_title(f"Ridge regression feature weights\n{title_suffix}")
+    axes[1].set_xlabel("Normalized absolute weight (%)")
+    axes[1].set_ylabel("Feature")
+    for i, v in enumerate(ridge_sorted.values * 100):
+        axes[1].text(v + 0.3, i, f"{v:.1f}%", va="center", fontsize=9)
+ 
+    # Legend (only needed when lat/lon are present)
+    if title_suffix == "including Latitude & Longitude":
+        from matplotlib.patches import Patch
+        legend_elements = [Patch(facecolor="coral", label="Geographic"),
+                           Patch(facecolor="steelblue", label="Non-geographic")]
+        fig.legend(handles=legend_elements, loc="lower center", ncol=2,
+                   bbox_to_anchor=(0.5, -0.04), frameon=False)
+ 
+    plt.tight_layout()
+    plt.savefig(filename, dpi=150, bbox_inches="tight")
+    plt.show()
+    print(f"Saved: {filename}")
+ 
+ 
+# ── Plot 1: WITH Latitude & Longitude ──────────────────────────────────────
+X_all = df_merged[ALL_FEATURES]
+y = df_merged[TARGET]
+ 
+rf_all, ridge_all = get_importances(X_all, y)
+ 
+print("=== WITH Latitude & Longitude ===")
+print("\nRandom Forest importances:")
+print((rf_all * 100).round(2).sort_values(ascending=False).to_string())
+print("\nRidge normalized weights:")
+print((ridge_all * 100).round(2).sort_values(ascending=False).to_string())
+ 
+plot_importances(
+    rf_all, ridge_all,
+    title_suffix="including Latitude & Longitude",
+    filename="feature_importance_with_geo.png"
+)
+ 
+# ── Plot 2: WITHOUT Latitude & Longitude ───────────────────────────────────
+X_no_geo = df_merged[GEO_EXCLUDED]
+ 
+rf_nogeo, ridge_nogeo = get_importances(X_no_geo, y)
+ 
+print("\n=== WITHOUT Latitude & Longitude ===")
+print("\nRandom Forest importances:")
+print((rf_nogeo * 100).round(2).sort_values(ascending=False).to_string())
+print("\nRidge normalized weights:")
+print((ridge_nogeo * 100).round(2).sort_values(ascending=False).to_string())
+ 
+plot_importances(
+    rf_nogeo, ridge_nogeo,
+    title_suffix="excluding Latitude & Longitude",
+    filename="feature_importance_without_geo.png"
+)
+
+
